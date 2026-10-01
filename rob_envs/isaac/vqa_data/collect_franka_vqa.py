@@ -182,13 +182,13 @@ def project(p_w):
 def perception_qa(image_path, ee_p):
     """Ground-truth questions about the first frame."""
     pos = {n: c.data.root_pos_w.torch[0].cpu().numpy() for n, c in cubes.items()}
-    qa = []
+    qa, pix = [], {}
     for n, p in pos.items():
-        u, v = project(p)
+        u, v = pix[n] = project(p)
         qa.append((f"Where is the {n} cube in the image? Answer in pixel coordinates (x, y).", f"({u}, {v})"))
         qa.append((f"What is the 3D position of the {n} cube in meters?", f"({p[0]:.2f}, {p[1]:.2f}, {p[2]:.2f})"))
     closest = min(pos, key=lambda n: np.linalg.norm(pos[n] - ee_p))
-    leftmost = max(pos, key=lambda n: pos[n][1])  # +y is image-left from this camera
+    leftmost = min(pix, key=lambda n: pix[n][0])  # smallest pixel x
     qa.append(("Which cube is closest to the gripper?", closest))
     qa.append(("Which cube is on the left side of the image?", leftmost))
     qa.append(("How many cubes are on the table?", str(len(pos))))
