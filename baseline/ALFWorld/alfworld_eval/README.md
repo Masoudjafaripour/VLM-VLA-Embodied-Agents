@@ -6,6 +6,32 @@ $$\pi_\theta(a_t \mid g, o_t, h_t, \mathcal{A}_t)$$
 
 At every step the LLM sees the task $g$, the current observation $o_t$, the last few (action, observation) pairs $h_t$ and the admissible commands $\mathcal{A}_t$. It must return one of those commands verbatim.
 
+![Qwen3-1.7B solving an ALFWorld Heat task zero-shot](assets/demo.gif)
+
+*Qwen3-1.7B (strict zero-shot prompt) solves "heat some egg and put it in garbagecan" from `valid_unseen` in 12 steps with no invalid outputs. It finds the egg, heats it in the microwave and places it. The environment is text-only, so the GIF is the logged trajectory replayed. Regenerate with `python make_demo_gif.py` (auto-picks a short successful multi-stage episode from the best finished run) or `--jsonl ... --episode N`.*
+
+### Embodied (AI2-THOR) demo
+
+![Qwen3-4B zero-shot agent in AI2-THOR](assets/thor_demo.gif)
+
+*The same zero-shot agent (Qwen3-4B, rich prompt) acting in `AlfredThorEnv`, ALFWorld's 3D AI2-THOR twin of the text games, on "put some pencil on shelf" (`valid_unseen`). It succeeds in 5 steps; frames are the robot's egocentric camera. Navigation and manipulation are executed by ALFWorld's oracle controller from the LLM's high-level text commands. Log: [assets/thor_demo.json](assets/thor_demo.json).*
+
+Caveats:
+- This task is easy: the agent takes the pencil from shelf 1 and puts it back on shelf 1, which ALFWorld's goal check counts as a success.
+- A multi-stage attempt (heat egg → garbage can) failed in THOR, even though the same model solved it in the text env. Object layout and numbering differ between the THOR and text versions of a game.
+- The THOR demo is not part of the reported metrics.
+
+Run it with [`thor_demo.py`](thor_demo.py). It needs `pip install ai2thor==2.1.0 torchvision opencv-python-headless pandas werkzeug==2.0.3` and an X display (`sudo apt install xvfb`, then `Xvfb :99 -screen 0 1024x768x24 +extension GLX &`):
+
+```bash
+DISPLAY=:99 python thor_demo.py --model Qwen/Qwen3-4B --prompt-style rich \
+  --game ~/.cache/alfworld/json_2.1.1/valid_unseen/pick_and_place_simple-Pencil-None-Shelf-308/<trial>
+```
+
+> **alfworld 0.4.2 bug, worked around in `thor_demo.py`:** in THOR, placement commands are offered as `move OBJ to RECEP`, but the controller's parser only executes `put OBJ in/on RECEP`. So every placement returns "Nothing happens" and no task can ever succeed. The script rewrites `move … to …` into `put … in/on …` before calling `env.step`. The text-only `AlfredTWEnv` eval is unaffected.
+
+Full results table: [RESULTS.md](RESULTS.md).
+
 ## Files
 
 | File | What it does |
@@ -14,6 +40,8 @@ At every step the LLM sees the task $g$, the current observation $o_t$, the last
 | [`llm_agent.py`](llm_agent.py) | Loads the HF model (bf16 on GPU) and runs greedy generation. Maps the raw output to an admissible command with `parse_action`. |
 | [`prompts.py`](prompts.py) | The zero-shot prompt (system message + task/observation/history/numbered actions). |
 | [`report.py`](report.py) | Collects all `*_summary.json` runs into a paper-style table: success % per task type (Pick/Look/Clean/Heat/Cool/Pick2), Avg., All. |
+| [`thor_demo.py`](thor_demo.py) | Runs the agent in the 3D AI2-THOR twin (`AlfredThorEnv`) on one game and saves the robot's camera view as a GIF. |
+| [`make_demo_gif.py`](make_demo_gif.py) | Replays a logged episode as a terminal-style GIF (`assets/demo.gif`). |
 | [`requirements.txt`](requirements.txt) | Python deps. |
 
 ## Setup

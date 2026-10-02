@@ -1,4 +1,4 @@
-# VLM-VQA Embodied Control
+# VLM-VLA-Embodied-Agents
 
 A research playground for **language- and vision-driven robot control**: robot manipulation where a vision-language model (VLM) either answers questions about the scene (**VQA**) or outputs actions directly (**VLA**).
 
@@ -28,6 +28,7 @@ robot.execute(action)                                       # repeat until the t
 | LLM planning | [src/llm_vlm_robot_control/llm_control.py](src/llm_vlm_robot_control/llm_control.py) | Qwen2.5-3B reads the instruction and scene state, returns JSON subgoals, and diff-IK executes them in MuJoCo |
 | Imitation learning | [src/BC/](src/BC/) | DAgger on 2D/3D reaching arms with state, vision and fused policies |
 | Benchmarks | [baseline/LIBERO/](baseline/LIBERO/), [baseline/CALVIN/](baseline/CALVIN/) | Working env setups plus a pluggable `get_action(image, instruction)` rollout loop |
+| LLM agents | [baseline/ALFWorld/alfworld_eval/](baseline/ALFWorld/alfworld_eval/) | Zero-shot Qwen3 evaluation on ALFWorld (text env + AI2-THOR embodied demo) |
 | VLA evaluation | [baseline/Models/](baseline/Models/) | One `Policy` interface for OpenVLA, SmolVLA, pi0/pi0.5, RT-1, Octo, RT-2, CoT-VLA |
 | Isaac Lab | [rob_envs/isaac/](rob_envs/isaac/) | Franka and H1 humanoid sims, PPO walking training, and scripted **VQA/VLA dataset collection** |
 
@@ -71,6 +72,16 @@ Baseline setup for the [LIBERO](https://github.com/Lifelong-Robot-Learning/LIBER
 Baseline setup for the [CALVIN](https://github.com/mees/calvin) long-horizon, language-conditioned manipulation benchmark, with the same pluggable VLM/VLA rollout loop. See [baseline/CALVIN/](baseline/CALVIN/) for setup, scripts, and details.
 
 <img src="baseline/CALVIN/outputs/calvin_scene_D_lift_pink_block_table.png" width="300"> <img src="baseline/CALVIN/outputs/calvin_scene_D_lift_red_block_table_rollout.gif" width="300">
+
+## ALFWorld Benchmark (zero-shot LLM agents)
+
+Zero-shot evaluation of open-source LLMs (Qwen3-0.6B/1.7B/4B) on [ALFWorld](https://github.com/alfworld/alfworld) household tasks, with no training, no demonstrations and no expert plans. At each step the LLM picks one admissible command from the task, observation and recent history. See [baseline/ALFWorld/alfworld_eval/](baseline/ALFWorld/alfworld_eval/) for setup and scripts, and [RESULTS.md](baseline/ALFWorld/alfworld_eval/RESULTS.md) for the full per-task-type table.
+
+**Embodied (AI2-THOR) demo**: the same zero-shot agent (Qwen3-4B) acting in `AlfredThorEnv`, ALFWorld's 3D AI2-THOR twin of the text games, shown from the robot's egocentric camera (left). Next to it is a text-env episode (Qwen3-1.7B) heating an egg and placing it (right).
+
+<img src="baseline/ALFWorld/alfworld_eval/assets/thor_demo.gif" width="300"> <img src="baseline/ALFWorld/alfworld_eval/assets/demo.gif" width="480">
+
+Best result: Qwen3-1.7B with a richer zero-shot prompt reaches **14.8** avg. success on `valid_unseen` (strict prompt: 5.0; a reference paper reports 12.4 for the same base model).
 
 ## VLA Evaluation
 

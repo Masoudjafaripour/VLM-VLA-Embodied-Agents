@@ -75,23 +75,26 @@ def extract_task(obs):
     return obs.split(marker, 1)[1].strip() if marker in obs else obs.strip()
 
 
-def run_episode(env, agent, max_steps, history_len):
+def run_episode(env, agent, max_steps, history_len, prompt_style="strict"):
     obs, info = env.reset()
     obs = obs[0]
     gamefile = info["extra.gamefile"][0]
     task = extract_task(obs)
 
-    history, trajectory = [], []
+    history, trajectory, failed = [], [], []
     won, done, reward = False, False, 0.0
     for t in range(max_steps):
         admissible = info["admissible_commands"][0]
-        action, meta = agent.act(task, obs, history[-history_len:] if history_len else [], admissible)
+        action, meta = agent.act(task, obs, history[-history_len:] if history_len else [], admissible,
+                                 style=prompt_style, step=t, max_steps=max_steps, failed=failed[-10:])
 
         obs, score, done, info = env.step([action])
         obs, reward, done, won = obs[0], float(score[0]), bool(done[0]), bool(info["won"][0])
 
         trajectory.append({"step": t, "action": action, "observation": obs, **meta})
         history.append((action, obs))
+        if obs.strip() == "Nothing happens." and action not in failed:
+            failed.append(action)
         if done or won:
             break
 
@@ -118,6 +121,8 @@ def main():
     p.add_argument("--split", default="valid_unseen", choices=list(SPLITS))
     p.add_argument("--history-len", type=int, default=5, help="number of recent (action, obs) pairs in the prompt")
     p.add_argument("--max-new-tokens", type=int, default=32)
+    p.add_argument("--prompt-style", default="strict", choices=["strict", "rich"],
+                   help="rich = add generic ALFWorld rules + progress hints (still zero-shot)")
     p.add_argument("--out-dir", default=pjoin(os.path.dirname(os.path.abspath(__file__)), "outputs"))
     args = p.parse_args()
 
@@ -137,14 +142,15 @@ def main():
     agent = LLMAgent(args.model, max_new_tokens=args.max_new_tokens)
     print(f"Model {args.model} on {agent.device} ({agent.dtype})")
 
-    run_name = f"{args.model.replace('/', '_')}_{args.split}_s{args.seed}_{time.strftime('%Y%m%d-%H%M%S')}"
+    tag = args.model.replace("/", "_") + ("" if args.prompt_style == "strict" else f"+{args.prompt_style}")
+    run_name = f"{tag}_{args.split}_s{args.seed}_{time.strftime('%Y%m%d-%H%M%S')}"
     os.makedirs(args.out_dir, exist_ok=True)
     traj_path = pjoin(args.out_dir, run_name + ".jsonl")
 
     results = []
     with open(traj_path, "w") as f:
         for ep in range(args.num_episodes):
-            r = {"episode": ep, **run_episode(env, agent, args.max_steps, args.history_len)}
+            r = {"episode": ep, **run_episode(env, agent, args.max_steps, args.history_len, args.prompt_style)}
             results.append(r)
             f.write(json.dumps(r) + "\n")
             f.flush()
@@ -155,6 +161,7 @@ def main():
     n_decisions = sum(r["steps"] for r in results)
     summary = {
         "model": args.model,
+        "prompt_style": args.prompt_style,
         "split": args.split,
         "seed": args.seed,
         "num_episodes": len(results),

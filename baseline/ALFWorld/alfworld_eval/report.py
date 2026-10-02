@@ -58,21 +58,27 @@ def main():
     diag = ["| Model | Episodes | All (%) | Invalid-action rate (%) | Mean ep. length | Model latency (ms/step) |",
             "|---|---:|---:|---:|---:|---:|"]
 
-    for model in sorted(runs, key=size_key):
-        path, eps = runs[model]
+    STYLE_LABEL = {"strict": "Base Model, zero-shot (ours)", "rich": "Base Model, zero-shot + rich prompt (ours)"}
+    last_base = None
+    for key in sorted(runs, key=lambda k: (size_key(k.split("+")[0]), k)):
+        path, eps = runs[key]
+        model, _, style = key.partition("+")
+        style = style or "strict"
         by_type = [100 * np.mean([e["success"] for e in eps if e["task_type"] == t])
                    if any(e["task_type"] == t for e in eps) else np.nan for t in TYPES]
         avg = np.nanmean(by_type)
         decisions = sum(e["steps"] for e in eps)
         partial = f" (partial {len(eps)}/{total})" if total and len(eps) < total else ""
 
-        paper.append(f"| ***{model.split('/')[-1]}*** |" + " |" * (len(TYPES) + 1))
-        if model in REFERENCE:
-            paper.append(f"| Base Model (paper) | {fmt(REFERENCE[model][:-1])} | **{REFERENCE[model][-1]:.1f}** |")
-        paper.append(f"| Base Model, zero-shot (ours){partial} | {fmt(by_type)} | **{avg:.1f}** |")
+        if model != last_base:
+            paper.append(f"| ***{model.split('/')[-1]}*** |" + " |" * (len(TYPES) + 1))
+            if model in REFERENCE:
+                paper.append(f"| Base Model (paper) | {fmt(REFERENCE[model][:-1])} | **{REFERENCE[model][-1]:.1f}** |")
+            last_base = model
+        paper.append(f"| {STYLE_LABEL.get(style, style)}{partial} | {fmt(by_type)} | **{avg:.1f}** |")
 
         diag.append(
-            f"| {model} | {len(eps)} | {100 * np.mean([e['success'] for e in eps]):.1f} | "
+            f"| {model} ({style}) | {len(eps)} | {100 * np.mean([e['success'] for e in eps]):.1f} | "
             f"{100 * sum(e['invalid_outputs'] for e in eps) / max(decisions, 1):.1f} | "
             f"{np.mean([e['steps'] for e in eps]):.1f} | "
             f"{np.mean([s['latency_ms'] for e in eps for s in e['trajectory']]):.0f} |"
@@ -97,6 +103,7 @@ Success rate (%) on ALFWorld `{args.split}` (text-only `AlfredTWEnv`), by task t
 - **Env:** official ALFWorld `AlfredTWEnv`, `{args.split}` split ({total} games, each played once), max 50 steps per episode.
 - **Policy:** zero-shot. No training, no demonstrations, no expert plans.
 - **Prompt:** task + current observation + last 5 (action, observation) pairs + numbered admissible commands. The model is asked to return only the exact action text.
+- **Rich prompt** (`--prompt-style rich`): the same, plus a system prompt with generic ALFWorld rules (heat → microwave, cool → fridge, clean → sinkbasin, look → use desklamp, open closed receptacles, one object at a time, don't repeat "Nothing happens"), a step counter and the list of actions that had no effect. It is still zero-shot (no example trajectories, no per-game info), but it injects domain knowledge, which the strict setting doesn't.
 - **Decoding:** greedy (`do_sample=False`), `max_new_tokens=32`, bf16 on one RTX 3090. Qwen3 thinking mode off (`enable_thinking=False`).
 - **Latency:** the Qwen3 runs shared one GPU concurrently, so ms/step is inflated and only roughly comparable between models. Success numbers are unaffected.
 - **Parsing:** exact match → cleaned (quotes/prefixes/numbering) → index → unique substring → unambiguous near-match; otherwise fallback `look`, counted as invalid.

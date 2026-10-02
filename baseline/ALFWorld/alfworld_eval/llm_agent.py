@@ -103,8 +103,8 @@ class LLMAgent:
         text = self.tokenizer.decode(out[0, inputs["input_ids"].shape[1]:], skip_special_tokens=True)
         return text, latency_ms
 
-    def act(self, task, observation, history, admissible):
-        messages = build_messages(task, observation, history, admissible)
+    def act(self, task, observation, history, admissible, **prompt_kwargs):
+        messages = build_messages(task, observation, history, admissible, **prompt_kwargs)
         raw, latency_ms = self.generate(messages)
         action, mode = parse_action(raw, admissible)
         return action, {"raw_output": raw, "parse_mode": mode, "latency_ms": latency_ms}

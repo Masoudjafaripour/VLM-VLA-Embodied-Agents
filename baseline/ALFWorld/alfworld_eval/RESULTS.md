@@ -6,11 +6,14 @@ Success rate (%) on ALFWorld `valid_unseen` (text-only `AlfredTWEnv`), by task t
 |---|---:|---:|---:|---:|---:|---:|---:|
 | ***Qwen3-0.6B*** | | | | | | | |
 | Base Model, zero-shot (ours) | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | 0.0 | **0.0** |
+| Base Model, zero-shot + rich prompt (ours) | 0.0 | 11.1 | 0.0 | 0.0 | 0.0 | 0.0 | **1.9** |
 | ***Qwen3-1.7B*** | | | | | | | |
 | Base Model (paper) | 6.8 | 60.2 | 0.0 | 0.0 | 3.6 | 4.1 | **12.4** |
 | Base Model, zero-shot (ours) | 0.0 | 22.2 | 3.2 | 4.3 | 0.0 | 0.0 | **5.0** |
+| Base Model, zero-shot + rich prompt (ours) | 29.2 | 11.1 | 22.6 | 26.1 | 0.0 | 0.0 | **14.8** |
 | ***Qwen3-4B*** | | | | | | | |
-| Base Model, zero-shot (ours) (partial 103/134) | 11.1 | 6.7 | 3.7 | 0.0 | 0.0 | 0.0 | **3.6** |
+| Base Model, zero-shot (ours) | 12.5 | 5.6 | 3.2 | 0.0 | 0.0 | 0.0 | **3.5** |
+| Base Model, zero-shot + rich prompt (ours) | 8.3 | 55.6 | 3.2 | 0.0 | 4.8 | 0.0 | **12.0** |
 
 **Avg.** is the unweighted mean of the 6 task-type success rates, as in the reference table.
 
@@ -18,9 +21,12 @@ Success rate (%) on ALFWorld `valid_unseen` (text-only `AlfredTWEnv`), by task t
 
 | Model | Episodes | All (%) | Invalid-action rate (%) | Mean ep. length | Model latency (ms/step) |
 |---|---:|---:|---:|---:|---:|
-| Qwen/Qwen3-0.6B | 134 | 0.0 | 23.7 | 50.0 | 142 |
-| Qwen/Qwen3-1.7B | 134 | 4.5 | 2.2 | 48.4 | 248 |
-| Qwen/Qwen3-4B | 103 | 3.9 | 13.0 | 48.6 | 385 |
+| Qwen/Qwen3-0.6B (strict) | 134 | 0.0 | 23.7 | 50.0 | 142 |
+| Qwen/Qwen3-0.6B (rich) | 134 | 1.5 | 25.2 | 49.5 | 256 |
+| Qwen/Qwen3-1.7B (strict) | 134 | 4.5 | 2.2 | 48.4 | 248 |
+| Qwen/Qwen3-1.7B (rich) | 134 | 16.4 | 3.5 | 44.8 | 391 |
+| Qwen/Qwen3-4B (strict) | 134 | 3.7 | 13.0 | 48.6 | 384 |
+| Qwen/Qwen3-4B (rich) | 134 | 10.4 | 19.3 | 46.5 | 530 |
 
 **All** is success over all episodes, weighted by how many games each task type has. **Invalid-action rate** is the share of decisions where the model's output couldn't be matched to an admissible command (the agent then played `look`).
 
@@ -29,6 +35,7 @@ Success rate (%) on ALFWorld `valid_unseen` (text-only `AlfredTWEnv`), by task t
 - **Env:** official ALFWorld `AlfredTWEnv`, `valid_unseen` split (134 games, each played once), max 50 steps per episode.
 - **Policy:** zero-shot. No training, no demonstrations, no expert plans.
 - **Prompt:** task + current observation + last 5 (action, observation) pairs + numbered admissible commands. The model is asked to return only the exact action text.
+- **Rich prompt** (`--prompt-style rich`): the same, plus a system prompt with generic ALFWorld rules (heat → microwave, cool → fridge, clean → sinkbasin, look → use desklamp, open closed receptacles, one object at a time, don't repeat "Nothing happens"), a step counter and the list of actions that had no effect. It is still zero-shot (no example trajectories, no per-game info), but it injects domain knowledge, which the strict setting doesn't.
 - **Decoding:** greedy (`do_sample=False`), `max_new_tokens=32`, bf16 on one RTX 3090. Qwen3 thinking mode off (`enable_thinking=False`).
 - **Latency:** the Qwen3 runs shared one GPU concurrently, so ms/step is inflated and only roughly comparable between models. Success numbers are unaffected.
 - **Parsing:** exact match → cleaned (quotes/prefixes/numbering) → index → unique substring → unambiguous near-match; otherwise fallback `look`, counted as invalid.

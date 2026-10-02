@@ -5,3 +5,7 @@ torch>=2.1
 transformers>=4.51     # Qwen3 support; uses the `dtype=` kwarg of transformers 5
 accelerate
 numpy
+pillow                 # make_demo_gif.py / thor_demo.py
+
+# thor_demo.py only (3D AI2-THOR demo; also needs an X display, e.g. Xvfb):
+# ai2thor==2.1.0 torchvision opencv-python-headless pandas werkzeug==2.0.3
