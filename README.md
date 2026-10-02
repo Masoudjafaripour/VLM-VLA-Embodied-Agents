@@ -31,6 +31,7 @@ robot.execute(action)                                       # repeat until the t
 | LLM agents | [baseline/ALFWorld/alfworld_eval/](baseline/ALFWorld/alfworld_eval/) | Zero-shot Qwen3 evaluation on ALFWorld (text env + AI2-THOR embodied demo) |
 | VLA evaluation | [baseline/Models/](baseline/Models/) | One `Policy` interface for OpenVLA, SmolVLA, pi0/pi0.5, RT-1, Octo, RT-2, CoT-VLA |
 | Isaac Lab | [rob_envs/isaac/](rob_envs/isaac/) | Franka and H1 humanoid sims, PPO walking training, and scripted **VQA/VLA dataset collection** |
+| VLM + decision model (MuJoCo) | [rob_envs/MuJoCo/](rob_envs/MuJoCo/) | Franka pick-and-place where Qwen3-VL perceives and **Jev** (TypeSafe AI) makes typed decisions; qwen / jev / combined modes benchmarked |
 
 
 ## UR5 Null Space Control
@@ -60,6 +61,19 @@ Minimal [Isaac Lab](https://github.com/isaac-sim/IsaacLab) 3.0 / Isaac Sim 6.1 e
 | Which cube is on the left side of the image? | `blue` |
 | *grasp the blue cube and lift it* (step 0 action) | `[0.0006, -0.0042, -0.0090, 0, 0, 0, +1]` → tokens `131 101 70 128 128 128 255` |
 | *grasp the blue cube and lift it* (step 47 action) | `[0, 0, 0, 0, 0, 0, -1]` (close gripper) → tokens `128 128 128 128 128 128 0` |
+
+## Jev × Qwen3-VL Pick-and-Place (MuJoCo)
+
+A Franka Panda follows instructions such as *"the grass-colored block belongs on the white mat"*.
+[Jev](https://pydantic.dev/docs/ai/models/typesafe/) is TypeSafe AI's text-only *System 1* decision model, and here it makes the decisions:
+- **Pick and place:** given the instruction and the list of detected objects, Jev chooses which cube and which mat. The answer is a typed choice restricted to objects in the scene, with a confidence for each field.
+- **Success check:** Jev gives a yes/no on whether the task succeeded.
+
+[Qwen3-VL-8B](https://huggingface.co/Qwen/Qwen3-VL-8B-Instruct) handles perception (2D points on the camera image, lifted to 3D with depth). In `combined` mode Qwen also acts as *System 2*, reasoning step by step only when Jev's confidence is below 0.7. A differential-IK controller executes the grasp.
+
+Over 50 episodes per mode, Jev chose the right cube and mat every time, including paraphrases, negations and Qwen's habit of calling the purple mat "pink". It decided in a median of 0.17–0.25 s and never had to escalate to Qwen. The remaining task failures come from Qwen localizing a cube several cm off. See [rob_envs/MuJoCo/](rob_envs/MuJoCo/) for the three modes, commands and the full comparison.
+
+<img src="rob_envs/MuJoCo/assets/demo_jev.gif" width="320"> <img src="rob_envs/MuJoCo/assets/comparison.png" width="480">
 
 ## LIBERO Benchmark
 
