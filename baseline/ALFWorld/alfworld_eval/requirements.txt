@@ -1,0 +1,7 @@
+# Tested in alfworld_venv (Python 3.12, torch 2.5.1+cu121, transformers 5.18.0).
+# Kept separate from vla_venv, whose transformers==4.40.1 pin (OpenVLA) predates Qwen3.
+alfworld==0.4.2        # text-only install; pulls textworld 1.7.0. Run `alfworld-download` once afterwards.
+torch>=2.1
+transformers>=4.51     # Qwen3 support; uses the `dtype=` kwarg of transformers 5
+accelerate
+numpy
