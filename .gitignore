@@ -97,6 +97,7 @@ outputs/isaac
 alfworld_eval/outputs
 baseline/ALFWorld/alfworld_eval/outputs
 outputs/mujoco_jev
+outputs/mujoco_llm
 
 # pyenv
 #   For a library or package, you might want to ignore these files since the code is
