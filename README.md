@@ -32,6 +32,7 @@ robot.execute(action)                                       # repeat until the t
 | VLA evaluation | [baseline/Models/](baseline/Models/) | One `Policy` interface for OpenVLA, SmolVLA, pi0/pi0.5, RT-1, Octo, RT-2, CoT-VLA |
 | Isaac Lab | [rob_envs/isaac/](rob_envs/isaac/) | Franka and H1 humanoid sims, PPO walking training, and scripted **VQA/VLA dataset collection** |
 | VLM + decision model (MuJoCo) | [rob_envs/MuJoCo/](rob_envs/MuJoCo/) | Franka pick-and-place where Qwen3-VL perceives and **Jev** (TypeSafe AI) makes typed decisions; qwen / jev / combined modes benchmarked |
+| VLM closed-loop planning (MuJoCo) | [rob_envs/MuJoCo/](rob_envs/MuJoCo/) | Multi-step 5-cube sorting planned by **GPT-5.x** or Qwen3-VL from side + wrist camera views, with memory of recent states |
 
 
 ## UR5 Null Space Control
@@ -74,6 +75,20 @@ A Franka Panda follows instructions such as *"the grass-colored block belongs on
 Over 50 episodes per mode, Jev chose the right cube and mat every time, including paraphrases, negations and Qwen's habit of calling the purple mat "pink". It decided in a median of 0.17–0.25 s and never had to escalate to Qwen. The remaining task failures come from Qwen localizing a cube several cm off. See [rob_envs/MuJoCo/](rob_envs/MuJoCo/) for the three modes, commands and the full comparison.
 
 <img src="rob_envs/MuJoCo/assets/demo_jev.gif" width="320"> <img src="rob_envs/MuJoCo/assets/comparison.png" width="480">
+
+## GPT / Qwen3-VL Multi-Step Sorting (MuJoCo)
+
+A Franka Panda sorts five cubes onto two mats from one instruction, for example *"put every warm-colored cube on the purple
+mat and every cool-colored cube on the white mat"*. At every step the VLM (GPT-5.x through the OpenAI API, or Qwen3-VL-8B
+locally) gets one image with two views side by side: an **eye-to-hand** side view and an **eye-in-hand** wrist view. It
+also gets its last 3 states with the actions attempted from them. It points at the objects and re-plans, and the robot
+runs only the next action before observing again.
+
+GPT-5.5 sorted all five cubes in 5 actions with no missed grasps ($0.32 per episode). Smaller models plan correctly but
+point too imprecisely to grasp a 4 cm cube. See [rob_envs/MuJoCo/](rob_envs/MuJoCo/#2-multi-step-sorting-gpt-family-vs-qwen3-vl)
+for how it works, commands and results.
+
+<img src="rob_envs/MuJoCo/assets/llm_gpt55_demo.gif" width="640">
 
 ## LIBERO Benchmark
 
